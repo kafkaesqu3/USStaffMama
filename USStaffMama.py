@@ -51,6 +51,10 @@ def banner():
     print                                                                  
     print
 
+def escape_csv(value):
+    return value
+    return value.replace('"', '\\"').replace(',', '\\,')
+
 # US Staff Search
 def search(company, email, prefix):
     csv = []
@@ -89,87 +93,31 @@ def search(company, email, prefix):
         r = requests.get(url)
         content = (r.text)
         contentSoup = BeautifulSoup(content, 'html.parser')
+        user_divs = contentSoup.find_all(lambda tag: tag.has_attr('class') and ' '.join(tag['class']) in ['empl row pt-2 pb-2 mb-2 bg-light', 'empl row pt-2 pb-2 mb-2'])   
+        for div in user_divs:    
+            name_tag = div.find('strong', class_='name')
+            name = escape_csv(name_tag.text) if name_tag else 'N/A'
 
-        for j in contentSoup.find_all("img"):
-            if 'id="imgCompanyLogo"' in str(j):
-                # The Logo img tag is alt="" which breaks forloop
-                continue
-            else:
-                raw = j.get('alt').lower().split()
+            city_tag = div.find('span', class_='d-block')
+            city = escape_csv(city_tag.text) if city_tag else 'N/A'
 
-                firstName = raw[0]
-                lastName = raw[1:]
+            years_tag = div.find('div', class_='col-lg-2 col-md-2 cur_p')
+            years = escape_csv(years_tag.text) if years_tag else 'N/A'
 
-                name = firstName + " " + lastName[0]
+            job_tag = div.find('div', class_='col-lg-4 col-md-3 cur_p')
+            job = escape_csv(job_tag.text) if job_tag else 'N/A'
 
-                fname = ""
-                mname = ""
-                lname = ""
+            industry_tag = div.find('div', class_='col-lg-2 col-md-2 cur_p')
+            industry = escape_csv(industry_tag.text) if industry_tag else 'N/A'
 
-                if len(lastName) == 1:
-                    fname = firstName
-                    mname = '?'
-                    lname = lastName[0]
-                elif len(lastName) == 2:
-                    fname = firstName
-                    mname = lastName[0]
-                    lname = lastName[1]
-                elif len(lastName) >= 3:
-                    fname = firstName
-                    lname = lastName[0]
-                else:
-                    fname = firstName
-                    lname = '?'
 
-                fname = re.sub('[^A-Za-z]+', '', fname)
-                mname = re.sub('[^A-Za-z]+', '', mname)
-                lname = re.sub('[^A-Za-z]+', '', lname)
-
-                #print(fname, mname, lname)
-
-                if len(fname) == 0 or len(lname) == 0:
-                    continue
-
-                # Username Scheme Generator
-                # [0] Auto (hunter.io) 
-                # [1] FirstLast
-                if prefix == "1" or prefix == 'firstlast':
-                    user = '{}{}'.format(fname, lname)
-            
-                # [2] FirstMiddleLast 
-                if prefix == "2" or prefix == 'fistmlast':
-                    if len(mname) == 0:
-                        user = '{}{}{}'.format(fname, mname, lname)
-                    else:
-                        user = '{}{}{}'.format(fname, mname[0], lname)
-                
-                # [3] FLast 
-                if prefix == "3" or prefix == 'flast':
-                    user = '{}{}'.format(fname[0], lname)
-                
-                # [4] FirstL  
-                if prefix == "4" or prefix == 'firstl':
-                    user = '{}{}'.format(fname, lname[0])
-                
-                # [5] First.Last 
-                if prefix == "5" or prefix == 'first.last':
-                    user = '{}.{}'.format(fname, lname)
-                
-                # [6] Last.First
-                if prefix == "6" or prefix == 'lastfirst':
-                    user = '{}.{}'.format(lname, fname)
-
-                if prefix == 'fmlast':
-                    if len(mname) == 0:
-                        user = '{}{}{}'.format(fname[0], mname, lname)
-                    else:
-                        user = '{}{}{}'.format(fname[0], mname[0], lname)
-                    
-                # CSV
-                csv.append('"%s","%s","%s","%s"' % (fname, lname, name, user + "@" + email))
-                f = open('{}.csv'.format(company), 'w')
-                f.writelines('\n'.join(csv))
-                f.close()
+            print(f"\"{name}\",\"{city}\",\"{years}\",\"{job}\",\"{industry}\"")
+              
+            # CSV
+            csv.append('"%s","%s","%s","%s","%s"' % (name, city, years, job, industry))
+            f = open('{}.csv'.format(company), 'w')
+            f.writelines('\n'.join(csv))
+            f.close()
 
 if __name__ == '__main__':
     banner()
